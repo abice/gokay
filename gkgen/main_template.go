@@ -22,10 +22,18 @@ const (
 	    {{ $rules := index $ruleMap $name -}}
 	    {{ if gt (len $rules) 0 -}}
 	    // Begin {{ $name }} Validations
+
+			var errors{{ $name }} gokay.ErrorSlice
+
 	    {{- range $rIndex, $rule := $rules }}
 	      // {{ $rule -}}
 	      {{ CallTemplate $rule $field }}
-	    {{- end -}}
+	    {{- end}}
+
+			if len(errors{{ $name }}) > 0 {
+				errors["{{ $name }}"] = errors{{ $name }}
+			}
+			
 	    // End {{ $name }} Validations
 
 	    {{ end }}

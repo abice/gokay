@@ -12,7 +12,10 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-const validateTag = `valid`
+const (
+	validateTag = `valid`
+	errorFormat = `errors%s = append(errors%s, %s)`
+)
 
 type Generator struct {
 	t              *template.Template
@@ -25,10 +28,12 @@ func init() {
 	internalTemplates = []string{
 		masterTemplate,
 		notNilTemplate,
-		// bcp47Template,
+		bcp47Template,
 	}
 }
 
+// NewGenerator is a constructor method for creating a new Generator with default
+// templates loaded.
 func NewGenerator() *Generator {
 	g := &Generator{
 		knownTemplates: make(map[string]*template.Template),
@@ -37,6 +42,7 @@ func NewGenerator() *Generator {
 	g.t.Funcs(map[string]interface{}{
 		"CallTemplate": g.CallTemplate,
 		"IsPtr":        IsPtr,
+		"AddError":     AddFieldError,
 	})
 
 	for _, internalT := range internalTemplates {
@@ -48,6 +54,20 @@ func NewGenerator() *Generator {
 	return g
 }
 
+// AddError is a helper method for templates to add an error to a field.
+func AddError(field string, eString string) (ret string, err error) {
+	ret = fmt.Sprintf(errorFormat, field, field, eString)
+	return
+}
+
+// AddFieldError is a helper method for templates to add an error to a field.
+func AddFieldError(field *ast.Field, eString string) (ret string, err error) {
+	name := field.Names[0]
+	ret = fmt.Sprintf(errorFormat, name, name, eString)
+	return
+}
+
+// IsPtr is a helper method for templates to use to determine if a field is a pointer.
 func IsPtr(data interface{}) (ret bool, err error) {
 	ret = false
 	if field, ok := data.(*ast.Field); ok {
@@ -58,6 +78,8 @@ func IsPtr(data interface{}) (ret bool, err error) {
 	return
 }
 
+// CallTemplate is a helper method for the template to call a parsed template but with
+// a dynamic name.
 func (g *Generator) CallTemplate(name string, data interface{}) (ret string, err error) {
 	found := false
 	for _, temp := range g.t.Templates() {
@@ -149,6 +171,7 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 
 	formatted, err := imports.Process(pkg, vBuff.Bytes(), nil)
 	if err != nil {
+		fmt.Printf("Error formatting code %s\n\n%s\n", err, string(vBuff.Bytes()))
 		err = fmt.Errorf("generate: error formatting code: %s", err)
 	}
 	return formatted, err

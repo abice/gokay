@@ -9,7 +9,7 @@ import (
 const (
 	notNilTemplate = `{{define "NotNil"}}
 	  if s.{{index .Names 0}} == nil {
-	    errors["{{index .Names 0}}"] = append(errors["{{index .Names 0}}"], errors.New("is Nil"))
+	    {{ AddError . "errors.New(\"is Nil\")" }}
 	  }
 	{{end -}}
 	`

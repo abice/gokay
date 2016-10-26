@@ -8,16 +8,17 @@ import (
 
 const (
 	bcp47Template = `
-	{{define "BCP47"}}
+	{{define "BCP47" -}}
 	{{if (IsPtr . )}}
 	if err := gokay.IsBCP47(s.{{index .Names 0}}); err != nil {
-	  errors["{{index .Names 0}}"] = append(errors[{{index .Names 0}}], err)
+	  {{ AddError . "err" }}
 	}
 	{{else}}
 	if err := gokay.IsBCP47(&s.{{index .Names 0}}); err != nil {
-		errors{{index .Names 0}} = append(errors{{index .Names 0}}, err)
+	  {{ AddError . "err" }}
 	}
 	{{end}}
+	{{end -}}
 `
 )
 

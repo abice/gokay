@@ -24,7 +24,7 @@ type PlaybackRequest struct {
 	// URL Deconstructed params
 	DeliveryType      string            `valid:"NotEmpty"`
 	RequestedFileType *string           `valid:"NotNil"`
-	DomainID          string            `valid:"NotNil"`
+	DomainID          string            `valid:"BCP47"`
 	ApplicationID     string            `valid:"NotNil"`
 	MediaItemID       string            `valid:"NotNil"`
 	VirtualFileName   string            `valid:"NotNil"`
