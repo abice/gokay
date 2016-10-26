@@ -33,6 +33,19 @@ func (em ErrorMap) Error() string {
 	return out.String()
 }
 
+func (em ErrorMap) AddError(fieldName string, err error) {
+	if existing, ok := em[fieldName]; ok {
+		if slice, isSlice := existing.(ErrorSlice); isSlice {
+			slice = append(slice, err)
+			em[fieldName] = slice
+		}
+	} else {
+		var slice ErrorSlice
+		slice = append(slice, err)
+		em[fieldName] = slice
+	}
+}
+
 // ErrorSlice is a slice of errors. Typically an ErrorSlice will be an entry
 // in the ErrorMap outputted by a generated Validate function, each element
 // of the array represents a failed validation on that field.
