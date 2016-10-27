@@ -17,6 +17,7 @@ const (
 	errorFormat = `errors%s = append(errors%s, %s)`
 )
 
+// Generator is responsible for generating validation files for the given in a go source file.
 type Generator struct {
 	t              *template.Template
 	knownTemplates map[string]*template.Template
@@ -44,6 +45,8 @@ func NewGenerator() *Generator {
 	return g
 }
 
+///// Begin Template Helper Methods /////
+
 // AddError is a helper method for templates to add an error to a field.
 func AddError(field string, eString string) (ret string, err error) {
 	ret = fmt.Sprintf(errorFormat, field, field, eString)
@@ -67,6 +70,8 @@ func IsPtr(data interface{}) (ret bool, err error) {
 	}
 	return
 }
+
+///// End Template Helper Methods /////
 
 // CallTemplate is a helper method for the template to call a parsed template but with
 // a dynamic name.
@@ -137,7 +142,7 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 			"rules": rules,
 		}
 
-		err := g.t.ExecuteTemplate(vBuff, "struct", data)
+		err = g.t.ExecuteTemplate(vBuff, "struct", data)
 
 		if err != nil {
 			if te, ok := err.(template.ExecError); ok {
@@ -157,18 +162,23 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 
 }
 
+// addTemplate is for parsing and add that template string into the template engine.
 func (g *Generator) addTemplate(t string) (err error) {
 	g.t = template.Must(g.t.Parse(t))
 	g.updateTemplates()
 	return
 }
 
+// addTemplateFiles will be used during generation when the command line accepts
+// user templates to add to the generation.
 func (g *Generator) addTemplateFiles(filenames ...string) (err error) {
 	g.t = template.Must(g.t.ParseFiles(filenames...))
 	g.updateTemplates()
 	return
 }
 
+// updateTemplates will update the lookup map for validation checks that are
+// allowed within the template engine.
 func (g *Generator) updateTemplates() {
 	for _, template := range g.t.Templates() {
 		g.knownTemplates[template.Name()] = template
@@ -183,9 +193,11 @@ func (g *Generator) parseFile(fileName string) (*ast.File, error) {
 	return parser.ParseFile(fset, fileName, nil, parser.ParseComments)
 }
 
+// inspect will walk the ast and fill a map of names and their struct information
+// for use in the generation template.
 func (g *Generator) inspect(f *ast.File) map[string]*ast.StructType {
 	structs := make(map[string]*ast.StructType)
-	// Inspect the AST and print all identifiers and literals.
+	// Inspect the AST and find all structs.
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.Ident:
@@ -196,10 +208,6 @@ func (g *Generator) inspect(f *ast.File) map[string]*ast.StructType {
 					if ts, ok := x.Obj.Decl.(*ast.TypeSpec); ok {
 						// Only stsore the struct types (we don't do anything for interfaces)
 						if sts, store := ts.Type.(*ast.StructType); store {
-							// for _, field := range sts.Fields.List {
-							// if field.Type
-							// fmt.Printf("Field: %#v\n", field.Type)
-							// }
 							structs[x.Name] = sts
 						}
 					}
