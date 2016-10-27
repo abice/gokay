@@ -6,15 +6,6 @@ import (
 	"reflect"
 )
 
-const (
-	notNilTemplate = `{{define "NotNil"}}
-	  if s.{{index .Names 0}} == nil {
-	    {{ AddError . "errors.New(\"is Nil\")" }}
-	  }
-	{{end -}}
-	`
-)
-
 // NotNilValidator generates code that will verify if a pointer is nil
 // Slice and Array support coming later.
 // It will flag nil string pointers as valid, use in conjunction with NotNil validator if you don't want nil values
