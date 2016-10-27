@@ -22,16 +22,6 @@ type Generator struct {
 	knownTemplates map[string]*template.Template
 }
 
-var internalTemplates []string
-
-func init() {
-	internalTemplates = []string{
-		masterTemplate,
-		notNilTemplate,
-		bcp47Template,
-	}
-}
-
 // NewGenerator is a constructor method for creating a new Generator with default
 // templates loaded.
 func NewGenerator() *Generator {
@@ -45,10 +35,10 @@ func NewGenerator() *Generator {
 		"AddError":     AddFieldError,
 	})
 
-	for _, internalT := range internalTemplates {
-		// fmt.Printf("Adding template: %s", internalT)
-		g.t = template.Must(g.t.Parse(internalT))
+	for _, assets := range AssetNames() {
+		g.t = template.Must(g.t.Parse(string(MustAsset(assets))))
 	}
+
 	g.updateTemplates()
 
 	return g
@@ -95,17 +85,6 @@ func (g *Generator) CallTemplate(name string, data interface{}) (ret string, err
 		err = g.t.ExecuteTemplate(buf, name, data)
 	}
 	ret = buf.String()
-	return
-}
-
-func (g *Generator) AddTemplate(t *template.Template) (err error) {
-	for _, internalT := range internalTemplates {
-		g.t, err = g.t.Parse(internalT)
-		if err != nil {
-			break
-		}
-	}
-
 	return
 }
 

@@ -2,7 +2,7 @@
 package {{.package}}
 
 import (
-"github.com/zencoder/gokay"
+"github.com/zencoder/gokay/gokay"
 )
 {{end -}}
 
@@ -11,7 +11,7 @@ import (
 func (s *{{.name}}) Validate () (error) {
   {{/* Only make the errors map if we're going to use it. */}}
   {{ if gt (len .rules) 0 }}
-  errors := make(gokay.ErrorMap)
+  em := make(gokay.ErrorMap)
   {{ end }}
   {{/* Iterate through the fields of the struct */}}
   {{range $index, $field := .st.Fields.List -}}
@@ -19,18 +19,26 @@ func (s *{{.name}}) Validate () (error) {
     {{ $rules := index $ruleMap $name -}}
     {{ if gt (len $rules) 0 -}}
     // Begin {{ $name }} Validations
-    {{- range $rIndex, $rule := $rules}}
-      // {{ $rule }}
+
+    var errors{{ $name }} gokay.ErrorSlice
+
+    {{- range $rIndex, $rule := $rules }}
+      // {{ $rule -}}
       {{ CallTemplate $rule $field }}
-    {{- end -}}
+    {{- end}}
+
+    if len(errors{{ $name }}) > 0 {
+      em["{{ $name }}"] = errors{{ $name }}
+    }
+
     // End {{ $name }} Validations
 
     {{ end }}
   {{- end}}
   {{/* Only check the errors map if we have rules. */}}
   {{ if gt (len .rules) 0 }}
-  if len(errors >0) {
-    return errors
+  if len(em) >0 {
+    return em
   }
   {{- end}}
   return nil

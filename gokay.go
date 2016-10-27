@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pborman/uuid"
 	"github.com/zencoder/gokay/gkgen"
 )
 
@@ -40,24 +39,19 @@ func main() {
 	fileName := args[0]
 
 	fileName, _ = filepath.Abs(fileName)
-	fileDir := filepath.Dir(fileName)
+	// fileDir := filepath.Dir(fileName)
 
-	tempName := uuid.NewRandom().String()
+	// tempName := uuid.NewRandom().String()
 
-	tempDir := fmt.Sprintf("%s/%s", fileDir, tempName)
-	if err := os.Mkdir(tempDir, os.ModePerm); err != nil {
-		log.Fatalf("Error creating directory %v: %v\n", tempDir, err)
-	}
-	tempFile := fmt.Sprintf("%s/%s.go", tempDir, tempName)
+	// tempDir := fmt.Sprintf("%s/%s", fileDir, tempName)
+	// if err := os.Mkdir(tempDir, os.ModePerm); err != nil {
+	// 	log.Fatalf("Error creating directory %v: %v\n", tempDir, err)
+	// }
+	// tempFile := fmt.Sprintf("%s/%s.go", tempDir, tempName)
 
 	outFilePath := fmt.Sprintf("%s_validators.go", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
-	// tempOut, err := os.Create(tempFile)
-	// if err != nil {
-	// 	log.Fatalf("Error while opening %v: %v\n", tempFile, err)
-	// }
-	// defer tempOut.Close()
 
-	fmt.Println(tempDir)
+	// fmt.Println(tempDir)
 
 	// fset := token.NewFileSet() // positions are relative to fset
 
@@ -65,12 +59,12 @@ func main() {
 	g := gkgen.NewGenerator()
 	raw, err := g.GenerateFromFile(fileName)
 	if err != nil {
-		log.Fatalf("Error while generating validators %v: %v\n", tempFile, err)
+		log.Fatalf("Error while generating validators %v: %v\n", fileName, err)
 	}
 
 	err = ioutil.WriteFile(outFilePath, raw, os.ModePerm)
 	if err != nil {
-		log.Fatalf("Error while writing to file %v: %v\n", tempFile, err)
+		log.Fatalf("Error while writing to file %v: %v\n", outFilePath, err)
 	}
 	log.Println("gokay finished. file:", args[0])
 }

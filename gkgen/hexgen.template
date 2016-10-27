@@ -1,0 +1,12 @@
+
+{{define "Hex" -}}
+{{if (IsPtr . )}}
+if err := gokay.IsHex(s.{{index .Names 0}}); err != nil {
+  {{ AddError . "err" }}
+}
+{{else}}
+if err := gokay.IsHex(&s.{{index .Names 0}}); err != nil {
+  {{ AddError . "err" }}
+}
+{{end}}
+{{end -}}

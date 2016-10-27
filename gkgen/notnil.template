@@ -1,0 +1,9 @@
+{{define "NotNil"}}
+  {{ if IsPtr . }}
+  if s.{{index .Names 0}} == nil {
+    {{ AddError . "errors.New(\"is Nil\")" }}
+  }
+  {{ else }}
+  // Skipped Non Pointer value for Nil evaluation
+  {{ end }}
+{{end -}}

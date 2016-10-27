@@ -6,22 +6,6 @@ import (
 	"reflect"
 )
 
-const (
-	bcp47Template = `
-	{{define "BCP47" -}}
-	{{if (IsPtr . )}}
-	if err := gokay.IsBCP47(s.{{index .Names 0}}); err != nil {
-	  {{ AddError . "err" }}
-	}
-	{{else}}
-	if err := gokay.IsBCP47(&s.{{index .Names 0}}); err != nil {
-	  {{ AddError . "err" }}
-	}
-	{{end}}
-	{{end -}}
-`
-)
-
 // BCP47Validator generates code that will verify if a field is a BCP47 compatible string
 // https://tools.ietf.org/html/bcp47
 type BCP47Validator struct {
