@@ -6,3 +6,4 @@ import:
 - package: golang.org/x/text
   subpackages:
   - /language
+- package: github.com/mkideal/cli

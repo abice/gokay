@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mkideal/cli"
 	"github.com/zencoder/gokay/gkgen"
 )
 
@@ -21,50 +22,49 @@ examples:
 	gokay file.go gkcustom NewCustomGKGenerator
 `
 
+type rootT struct {
+	cli.Helper
+	CustomTemplates []string `cli:"template" usage:"custom template files"`
+}
+
 func main() {
-	args := os.Args[1:]
-	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, usage)
-		return
-	}
-	log.Println("gokay started. file:", args[0])
+	cli.Run(new(rootT), func(ctx *cli.Context) error {
+		argv := ctx.Argv().(*rootT)
+		args := ctx.Args()
+		if len(args) < 1 {
+			return fmt.Errorf(usage)
+		}
+		g := gkgen.NewGenerator()
 
-	// genPackage := "gkgen"
-	// genConstructor := "NewValidator"
-	// if len(args) >= 3 {
-	// genPackage = args[1]
-	// genConstructor = args[2]
-	// }
+		if len(argv.CustomTemplates) > 0 {
+			ctx.String("Adding templates=%s\n", ctx.Color().Cyan(argv.CustomTemplates))
 
-	fileName := args[0]
+			// Add them one by one, because it's really just a warning if we can't load one of their templates.
+			for _, templ := range argv.CustomTemplates {
+				err := g.AddTemplateFiles(argv.CustomTemplates...)
+				if err != nil {
+					ctx.String("Unable to add template '%s': %s\n", ctx.Color().Cyan(templ), ctx.Color().Yellow(err))
+				}
+			}
+		}
+		ctx.String("gokay started. file: %s\n", ctx.Color().Cyan(args[0]))
 
-	fileName, _ = filepath.Abs(fileName)
-	// fileDir := filepath.Dir(fileName)
+		fileName := args[0]
+		fileName, _ = filepath.Abs(fileName)
+		outFilePath := fmt.Sprintf("%s_validators.go", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
 
-	// tempName := uuid.NewRandom().String()
+		// Parse the file given in arguments
+		raw, err := g.GenerateFromFile(fileName)
+		if err != nil {
+			return fmt.Errorf("Error while generating validators\nInputFile=%s\nError=%s\n", ctx.Color().Cyan(fileName), ctx.Color().RedBg(err))
+		}
 
-	// tempDir := fmt.Sprintf("%s/%s", fileDir, tempName)
-	// if err := os.Mkdir(tempDir, os.ModePerm); err != nil {
-	// 	log.Fatalf("Error creating directory %v: %v\n", tempDir, err)
-	// }
-	// tempFile := fmt.Sprintf("%s/%s.go", tempDir, tempName)
-
-	outFilePath := fmt.Sprintf("%s_validators.go", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
-
-	// fmt.Println(tempDir)
-
-	// fset := token.NewFileSet() // positions are relative to fset
-
-	// Parse the file given in arguments
-	g := gkgen.NewGenerator()
-	raw, err := g.GenerateFromFile(fileName)
-	if err != nil {
-		log.Fatalf("Error while generating validators %v: %v\n", fileName, err)
-	}
-
-	err = ioutil.WriteFile(outFilePath, raw, os.ModePerm)
-	if err != nil {
-		log.Fatalf("Error while writing to file %v: %v\n", outFilePath, err)
-	}
-	log.Println("gokay finished. file:", args[0])
+		err = ioutil.WriteFile(outFilePath, raw, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("Error while writing to file %s: %s\n", ctx.Color().Cyan(outFilePath), ctx.Color().Red(err))
+		}
+		log.Println("gokay finished. file:", args[0])
+		return nil
+	})
+	return
 }

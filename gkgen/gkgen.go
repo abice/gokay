@@ -169,11 +169,13 @@ func (g *Generator) addTemplate(t string) (err error) {
 	return
 }
 
-// addTemplateFiles will be used during generation when the command line accepts
+// AddTemplateFiles will be used during generation when the command line accepts
 // user templates to add to the generation.
-func (g *Generator) addTemplateFiles(filenames ...string) (err error) {
-	g.t = template.Must(g.t.ParseFiles(filenames...))
-	g.updateTemplates()
+func (g *Generator) AddTemplateFiles(filenames ...string) (err error) {
+	g.t, err = g.t.ParseFiles(filenames...)
+	if err == nil {
+		g.updateTemplates()
+	}
 	return
 }
 
