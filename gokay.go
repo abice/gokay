@@ -13,13 +13,10 @@ import (
 )
 
 // usage is a string used to provide a user with the application usage
-const usage = `usage: gokay <file> [generator-package generator-contructor]
-	generator-package        custom package
-	generator-contructor     custom generator
-
+const usage = `usage: gokay <file> [--template]
 examples:
 	gokay file.go
-	gokay file.go gkcustom NewCustomGKGenerator
+	gokay file.go --template=some.template --template=someOther.template
 `
 
 type rootT struct {
