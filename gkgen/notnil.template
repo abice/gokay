@@ -1,6 +1,6 @@
 {{define "NotNil"}}
-  {{ if IsPtr . }}
-  if s.{{index .Names 0}} == nil {
+  {{ if IsNullable . }}
+  if s.{{.FieldName}} == nil {
     {{ AddError . "errors.New(\"is Nil\")" }}
   }
   {{ else }}

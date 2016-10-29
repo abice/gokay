@@ -11,6 +11,7 @@ import (
 const (
 	testInput     = `testFile_test.go`
 	testNoStructs = `nostructs_test.go`
+	testExample   = `example.test`
 )
 
 // GkgenTestSuite
@@ -54,4 +55,13 @@ func (s *GkgenTestSuite) TestNoFile() {
 	// Parse the file given in arguments
 	_, err := g.GenerateFromFile("")
 	s.NotNil(err, "Error generating formatted code")
+}
+
+// TestExampleFile
+func (s *GkgenTestSuite) TestExampleFile() {
+	g := NewGenerator()
+	// Parse the file given in arguments
+	imported, err := g.GenerateFromFile(testExample)
+	s.Nil(err, "Error generating formatted code")
+	fmt.Println(string(imported))
 }

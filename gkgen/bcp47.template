@@ -1,12 +1,6 @@
 
-{{define "BCP47" -}}
-{{if (IsPtr . )}}
-if err := gokay.IsBCP47(s.{{index .Names 0}}); err != nil {
+{{define "BCP47"}}
+if err := gokay.IsBCP47({{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
   {{ AddError . "err" }}
 }
-{{else}}
-if err := gokay.IsBCP47(&s.{{index .Names 0}}); err != nil {
-  {{ AddError . "err" }}
-}
-{{end}}
 {{end -}}

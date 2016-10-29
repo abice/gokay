@@ -13,18 +13,17 @@ func (s *{{.name}}) Validate () (error) {
   {{ if gt (len .rules) 0 }}
   em := make(gokay.ErrorMap)
   {{ end }}
-  {{/* Iterate through the fields of the struct */}}
-  {{range $index, $field := .st.Fields.List -}}
-    {{ $name := (index $field.Names 0).Name -}}
-    {{ $rules := index $ruleMap $name -}}
+  {{/* Iterate through the rule map to create the rules */}}
+  {{range $name, $field := .rules -}}
+    {{ $rules := $field.Rules -}}
     {{ if gt (len $rules) 0 -}}
     // Begin {{ $name }} Validations
 
     var errors{{ $name }} gokay.ErrorSlice
 
     {{- range $rIndex, $rule := $rules }}
-      // {{ $rule -}}
-      {{ CallTemplate $rule $field }}
+      // {{ $rule.Name -}}
+      {{ CallTemplate $rule $rule }}
     {{- end}}
 
     if len(errors{{ $name }}) > 0 {

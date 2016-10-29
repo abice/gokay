@@ -13,14 +13,33 @@ import (
 )
 
 const (
-	validateTag = `valid`
-	errorFormat = `errors%s = append(errors%s, %s)`
+	validateTag = `valid:`
 )
+
+// Validation is a holder for a validation rule within the generation templates
+// It actually has the same information as the Field struct, simply for ease of
+// access from within the templates.
+type Validation struct {
+	Name      string
+	Param     string
+	FieldName string
+	F         *ast.Field
+}
+
+// Field is used for storing field information.  It holds a reference to the
+// original AST field information to help out if needed.
+type Field struct {
+	Name  string
+	F     *ast.Field
+	Rules []Validation
+	Type  string // Working on getting this figured out
+}
 
 // Generator is responsible for generating validation files for the given in a go source file.
 type Generator struct {
 	t              *template.Template
 	knownTemplates map[string]*template.Template
+	fileSet        *token.FileSet
 }
 
 // NewGenerator is a constructor method for creating a new Generator with default
@@ -29,11 +48,15 @@ func NewGenerator() *Generator {
 	g := &Generator{
 		knownTemplates: make(map[string]*template.Template),
 		t:              template.New("gkgen"),
+		fileSet:        token.NewFileSet(),
 	}
 	g.t.Funcs(map[string]interface{}{
 		"CallTemplate": g.CallTemplate,
-		"IsPtr":        IsPtr,
-		"AddError":     AddFieldError,
+		"IsPtr":        isPtr,
+		"AddError":     addFieldError,
+		"IsNullable":   isNullable,
+		"typeof":       typeof,
+		"isMap":        isMap,
 	})
 
 	for _, assets := range AssetNames() {
@@ -45,49 +68,21 @@ func NewGenerator() *Generator {
 	return g
 }
 
-///// Begin Template Helper Methods /////
-
-// AddError is a helper method for templates to add an error to a field.
-func AddError(field string, eString string) (ret string, err error) {
-	ret = fmt.Sprintf(errorFormat, field, field, eString)
-	return
-}
-
-// AddFieldError is a helper method for templates to add an error to a field.
-func AddFieldError(field *ast.Field, eString string) (ret string, err error) {
-	name := field.Names[0]
-	ret = fmt.Sprintf(errorFormat, name, name, eString)
-	return
-}
-
-// IsPtr is a helper method for templates to use to determine if a field is a pointer.
-func IsPtr(data interface{}) (ret bool, err error) {
-	ret = false
-	if field, ok := data.(*ast.Field); ok {
-		_, ret = field.Type.(*ast.StarExpr)
-	} else {
-		err = fmt.Errorf("Cannot cast the data past in as an *ast.Field")
-	}
-	return
-}
-
-///// End Template Helper Methods /////
-
 // CallTemplate is a helper method for the template to call a parsed template but with
 // a dynamic name.
-func (g *Generator) CallTemplate(name string, data interface{}) (ret string, err error) {
+func (g *Generator) CallTemplate(rule Validation, data interface{}) (ret string, err error) {
 	found := false
 	for _, temp := range g.t.Templates() {
-		if name == temp.Name() {
+		if rule.Name == temp.Name() {
 			found = true
 			break
 		}
 	}
 	buf := bytes.NewBuffer([]byte{})
 	if !found {
-		fmt.Printf("No template named for '%s' found, ignoring...\n", name)
+		fmt.Printf("No template named for '%s' found, ignoring...\n", rule.Name)
 	} else {
-		err = g.t.ExecuteTemplate(buf, name, data)
+		err = g.t.ExecuteTemplate(buf, rule.Name, data)
 	}
 	ret = buf.String()
 	return
@@ -112,25 +107,57 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 	g.t.ExecuteTemplate(vBuff, "header", map[string]interface{}{"package": pkg})
 
 	for name, st := range structs {
-		rules := make(map[string][]string)
+		rules := make(map[string]Field)
 
+		// Go through the fields in the struct and find all the validated tags
 		for _, field := range st.Fields.List {
 			if field.Tag != nil {
 				if strings.Contains(field.Tag.Value, validateTag) {
+					// We have a validation flag, make a field
+					f := Field{
+						F:    field,
+						Name: field.Names[0].Name,
+					}
+
+					// The AST keeps the rune marker on the string, so we trim them off
 					str := strings.Trim(field.Tag.Value, "`")
+					// Separate tag types are separated by spaces, so split on that
 					vals := strings.Split(str, " ")
 					for _, val := range vals {
+						// Only parse out the valid: tag
 						if strings.HasPrefix(val, validateTag) {
-							ruleStr := val[len(validateTag)+2 : len(val)-1]
+							// Strip off the valid: prefix and the quotation marks
+							ruleStr := val[len(validateTag)+1 : len(val)-1]
+							// Split on commas for multiple validations
 							fieldRules := strings.Split(ruleStr, ",")
 							for _, rule := range fieldRules {
-								if _, ok := g.knownTemplates[rule]; ok {
-									rules[field.Names[0].Name] = fieldRules
+								// Rules are able to have parameters,
+								// but will have an = in them if that is the case.
+								v := Validation{
+									Name:      rule,
+									FieldName: f.Name,
+									F:         f.F,
+								}
+								if strings.Contains(rule, `=`) {
+									// There is a parameter, so get the rule name, and the parameter
+									temp := strings.Split(rule, `=`)
+									v.Name = temp[0]
+									v.Param = temp[1]
+								}
+
+								// Only keep the rule if it is a known template
+								if _, ok := g.knownTemplates[v.Name]; ok {
+									f.Rules = append(f.Rules, v)
 								} else {
-									fmt.Printf("Skipping unknown validation template: '%s'", rule)
+									fmt.Printf("Skipping unknown validation template: '%s'\n", v.Name)
 								}
 							}
 						}
+					}
+
+					// If we have any rules for the field, add it to the map
+					if len(f.Rules) > 0 {
+						rules[f.Name] = f
 					}
 				}
 			}
@@ -189,15 +216,14 @@ func (g *Generator) updateTemplates() {
 
 // parseFile simply calls the go/parser ParseFile function with an empty token.FileSet
 func (g *Generator) parseFile(fileName string) (*ast.File, error) {
-	fset := token.NewFileSet() // positions are relative to fset
-
 	// Parse the file given in arguments
-	return parser.ParseFile(fset, fileName, nil, parser.ParseComments)
+	return parser.ParseFile(g.fileSet, fileName, nil, parser.ParseComments)
 }
 
 // inspect will walk the ast and fill a map of names and their struct information
 // for use in the generation template.
 func (g *Generator) inspect(f *ast.File) map[string]*ast.StructType {
+
 	structs := make(map[string]*ast.StructType)
 	// Inspect the AST and find all structs.
 	ast.Inspect(f, func(n ast.Node) bool {

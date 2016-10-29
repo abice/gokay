@@ -1,0 +1,6 @@
+
+{{define "Length"}}
+if err := gokay.LengthString({{.Param}}, {{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
+  {{ AddError . "err" }}
+}
+{{end -}}

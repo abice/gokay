@@ -1,0 +1,15 @@
+
+{{define "len"}}
+{{/* I want to be able to switch and output the correct length check based on*/}}
+{{/* field type but I don't have that figured out yet. */}}
+{{ if isMap . }}
+  // Checking length of map
+  if !(len(s.{{.FieldName}}) == {{.Param}}) {
+    {{ AddError . "errors.New(\"Length Mismatch\")" }}
+  }
+{{ else }}
+  if err := gokay.LengthString({{.Param}}, {{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
+    {{ AddError . "err" }}
+  }
+{{ end }}
+{{end -}}
