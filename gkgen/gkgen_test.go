@@ -3,6 +3,7 @@ package gkgen
 import (
 	"fmt"
 	"go/scanner"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -64,4 +65,34 @@ func (s *GkgenTestSuite) TestExampleFile() {
 	imported, err := g.GenerateFromFile(testExample)
 	s.Nil(err, "Error generating formatted code")
 	fmt.Println(string(imported))
+}
+
+var result bool
+
+// BenchmarkReflection is a quick test to see how much of an impact reflection has
+// in the performance of an application
+func BenchmarkReflection(b *testing.B) {
+	match := false
+	for x := 0; x < b.N; x++ {
+		zeroInt := reflect.Zero(reflect.ValueOf(x).Type())
+		if reflect.ValueOf(x).Interface() == zeroInt.Interface() {
+			match = true
+		}
+		match = false
+	}
+	result = match
+}
+
+// BenchmarkEmptyVar is a quick benchmark to determine performance of just using an empty var
+// for zero value comparison
+func BenchmarkEmptyVar(b *testing.B) {
+	match := false
+	for x := 0; x < b.N; x++ {
+		var zeroInt int
+		if x == zeroInt {
+			match = true
+		}
+		match = false
+	}
+	result = match
 }

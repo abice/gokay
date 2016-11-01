@@ -22,10 +22,16 @@ func NewSomeImplementation() SomeInterface {
 // SomeStruct is empty because a PlaybackRequest is a GET request.
 type SomeStruct struct {
 	// URL Deconstructed params
-	TestString      string  `valid:"NotEmpty"`
-	TestStringPtr   *string `valid:"NotNil"`
-	SomeBCP47String string  `valid:"BCP47"`
-	SomeInt         *int    `valid:"NoNil"`
+	TestString      string             `valid:"required"`
+	TestStringPtr   *string            `valid:"NotNil"`
+	SomeBCP47String string             `valid:"BCP47"`
+	SomeInt         *int               `valid:"NotNil"`
+	RequiredStruct  SomeImplementation `valid:"required"`
+	RequiredIFace   SomeInterface      `valid:"required"`
+	RequiredChan    chan int           `valid:"required"`
+	RequiredBool    bool               `valid:"required"`
+	RequiredInt     int                `valid:"required"`
+	RequiredInt8    int8               `valid:"required"`
 }
 
 // SomeOtherStruct

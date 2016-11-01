@@ -1,0 +1,16 @@
+{{define "required"}}
+  {{ if IsNullable . }}
+  if s.{{.FieldName}} == nil {
+    {{ AddError . "errors.New(\"is required\")" }}
+  }
+  {{ else if eq .FieldType "string" }}
+  if s.{{.FieldName}} == "" {
+    {{ AddError . "errors.New(\"is required\")" }}
+  }
+  {{ else }}
+  var zero{{.FieldName}} {{.FieldType}}
+  if s.{{.FieldName}} == zero{{.FieldName}} {
+    {{ AddError . "errors.New(\"is required\")" }}
+  }
+  {{ end }}
+{{end -}}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"strings"
 	"text/template"
@@ -24,6 +25,7 @@ type Validation struct {
 	Param     string
 	FieldName string
 	F         *ast.Field
+	FieldType string
 }
 
 // Field is used for storing field information.  It holds a reference to the
@@ -32,7 +34,7 @@ type Field struct {
 	Name  string
 	F     *ast.Field
 	Rules []Validation
-	Type  string // Working on getting this figured out
+	Type  string
 }
 
 // Generator is responsible for generating validation files for the given in a go source file.
@@ -51,12 +53,15 @@ func NewGenerator() *Generator {
 		fileSet:        token.NewFileSet(),
 	}
 	g.t.Funcs(map[string]interface{}{
-		"CallTemplate": g.CallTemplate,
-		"IsPtr":        isPtr,
-		"AddError":     addFieldError,
-		"IsNullable":   isNullable,
-		"typeof":       typeof,
-		"isMap":        isMap,
+		"CallTemplate":    g.CallTemplate,
+		"IsPtr":           isPtr,
+		"AddError":        addFieldError,
+		"IsNullable":      isNullable,
+		"typeof":          typeof,
+		"isMap":           isMap,
+		"isArray":         isArray,
+		"GenerationError": GenerationError,
+		"isStruct":        isStruct,
 	})
 
 	for _, assets := range AssetNames() {
@@ -113,12 +118,19 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 		for _, field := range st.Fields.List {
 			if field.Tag != nil {
 				if strings.Contains(field.Tag.Value, validateTag) {
+
 					// We have a validation flag, make a field
 					f := Field{
 						F:    field,
 						Name: field.Names[0].Name,
 					}
-
+					typeBuff := bytes.NewBuffer([]byte{})
+					pErr := printer.Fprint(typeBuff, g.fileSet, f.F.Type)
+					if pErr != nil {
+						fmt.Printf("Error getting Type: %s\n", pErr)
+					} else {
+						f.Type = typeBuff.String()
+					}
 					// The AST keeps the rune marker on the string, so we trim them off
 					str := strings.Trim(field.Tag.Value, "`")
 					// Separate tag types are separated by spaces, so split on that
@@ -133,11 +145,14 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 							for _, rule := range fieldRules {
 								// Rules are able to have parameters,
 								// but will have an = in them if that is the case.
+
 								v := Validation{
 									Name:      rule,
 									FieldName: f.Name,
 									F:         f.F,
+									FieldType: f.Type,
 								}
+
 								if strings.Contains(rule, `=`) {
 									// There is a parameter, so get the rule name, and the parameter
 									temp := strings.Split(rule, `=`)
@@ -148,6 +163,7 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 								// Only keep the rule if it is a known template
 								if _, ok := g.knownTemplates[v.Name]; ok {
 									f.Rules = append(f.Rules, v)
+
 								} else {
 									fmt.Printf("Skipping unknown validation template: '%s'\n", v.Name)
 								}
