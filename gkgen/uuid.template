@@ -1,0 +1,6 @@
+
+{{define "UUID"}}
+if err := gokay.IsUUID({{.Param}}, {{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
+  {{ AddError . "err" }}
+}
+{{end -}}
