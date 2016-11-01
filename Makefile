@@ -32,6 +32,6 @@ clean:
 # go-bindata will take all of the template files and create readable assets from them in the executable.
 # This way the templates are readable in atom (or another text editor with golang template language support)
 generate:
-	go-bindata -o gkgen/assets.go -pkg=gkgen gkgen/*.template
+	go-bindata -o gkgen/assets.go -pkg=gkgen gkgen/*.tmpl
 
 phony: clean tc build
