@@ -112,11 +112,11 @@ Tested on go 1.7.1.
     make test
 
 ### TODO
-	- [ ] Testing for templates
-	- [x] Prevent duplicate validations on the same field
-	- [x] Update Required tag to error out on numerical or boolean fields
-	- [ ] Support for sub-validations? `Struct fields: generated code will call static Validate method on any field that implements Validateable interface`  Maybe use a deep check
-	- [ ] Move cli to cmd directory, so that the gokay pkg is at the root of the repo.
+- [ ] Testing for templates
+- [x] Prevent duplicate validations on the same field
+- [x] Update Required tag to error out on numerical or boolean fields
+- [ ] Support for sub-validations? `Struct fields: generated code will call static Validate method on any field that implements Validateable interface`  Maybe use a deep check
+- [ ] Move cli to cmd directory, so that the gokay pkg is at the root of the repo.
 
 ### CI
 
