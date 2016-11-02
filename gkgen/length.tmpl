@@ -1,6 +1,20 @@
-
+{{/*
+  LengthValidateGen generates code that will verify the exact length of a String or String Pointer field.
+  Slice and Array support coming later.
+  It will flag nil string pointers as valid, use in conjunction with NotNil validator if you don't want nil values
+  */}}
 {{define "Length"}}
+{{ if eq .FieldType "string" "*string" }}
 if err := gokay.LengthString({{.Param}}, {{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
   {{ AddError . "err" }}
 }
+{{ else if eq .FieldType "[]string" "[]*string"}}
+for index, single{{.FieldName}} := range s.{{.FieldName}} {
+  if err := gokay.LengthString({{.Param}}, {{if eq .FieldType "[]string"}}&{{end}}single{{.FieldName}}); err != nil {
+  {{ AddError . (printf `fmt.Errorf("%%s[%%d] - %%s", index, single%s, err)` .FieldName) }}
+  }
+}
+{{ else }}
+{{ GenerationError (printf "Length is not valid on field '%s %s'" .FieldName .FieldType) }}
+{{end}}
 {{end -}}

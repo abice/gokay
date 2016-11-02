@@ -1,6 +1,0 @@
-
-{{define "Hex"}}
-if err := gokay.IsHex({{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
-  {{ AddError . "err" }}
-}
-{{end -}}

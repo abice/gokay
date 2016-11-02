@@ -4,6 +4,6 @@
     {{ AddError . "errors.New(\"is Nil\")" }}
   }
   {{ else }}
-  // Skipped Non Pointer value for Nil evaluation
+  {{ GenerationError (printf "NotNil is not valid on non nullable field '%s %s'" .FieldName .FieldType) }}
   {{ end }}
 {{end -}}

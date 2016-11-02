@@ -1,12 +1,16 @@
-hash: f3804886526e3edf1a3f76f05a59f78088923f3c2e683daa87d20485fb7bcac9
-updated: 2016-10-28T15:03:04.821264413-07:00
+hash: 123414334e9aefbcf0ea9296e40fc2c52e75d2ab01525e0c234ea6f9e1e0607c
+updated: 2016-11-02T13:02:06.548110818-07:00
 imports:
+- name: github.com/aokoli/goutils
+  version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/Bowery/prompt
   version: d43c2707a6c5a152a344c64bb4fed657e2908a81
 - name: github.com/labstack/gommon
   version: 2d272df536d051e737aea353b86c979d6e88bce0
   subpackages:
   - color
+- name: github.com/Masterminds/sprig
+  version: 8f797f5b23118d8fe846c4296b0ad55044201b14
 - name: github.com/mattn/go-colorable
   version: 6c903ff4aa50920ca86087a280590b36b3152b9c
 - name: github.com/mattn/go-isatty
@@ -20,6 +24,8 @@ imports:
   - expr
 - name: github.com/pborman/uuid
   version: c55201b036063326c5b1b89ccfe45a184973d073
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/stretchr/testify
   version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
@@ -49,7 +55,3 @@ testImports:
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
-- name: golang.org/x/net
-  version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
-  subpackages:
-  - context

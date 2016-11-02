@@ -105,7 +105,6 @@ func isStruct(f Validation) (ret bool, err error) {
 	switch fType.(type) {
 	case *ast.StructType:
 		ret = true
-	default:
 	}
 	return
 }

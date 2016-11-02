@@ -11,6 +11,8 @@ import (
 	"text/template"
 
 	"golang.org/x/tools/imports"
+
+	"github.com/Masterminds/sprig"
 )
 
 const (
@@ -52,17 +54,20 @@ func NewGenerator() *Generator {
 		t:              template.New("gkgen"),
 		fileSet:        token.NewFileSet(),
 	}
-	g.t.Funcs(map[string]interface{}{
-		"CallTemplate":    g.CallTemplate,
-		"IsPtr":           isPtr,
-		"AddError":        addFieldError,
-		"IsNullable":      isNullable,
-		"typeof":          typeof,
-		"isMap":           isMap,
-		"isArray":         isArray,
-		"GenerationError": GenerationError,
-		"isStruct":        isStruct,
-	})
+
+	funcs := sprig.TxtFuncMap()
+
+	funcs["CallTemplate"] = g.CallTemplate
+	funcs["IsPtr"] = isPtr
+	funcs["AddError"] = addFieldError
+	funcs["IsNullable"] = isNullable
+	funcs["typeof"] = typeof
+	funcs["isMap"] = isMap
+	funcs["isArray"] = isArray
+	funcs["GenerationError"] = GenerationError
+	funcs["isStruct"] = isStruct
+
+	g.t.Funcs(funcs)
 
 	for _, assets := range AssetNames() {
 		g.t = template.Must(g.t.Parse(string(MustAsset(assets))))
@@ -100,7 +105,13 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generate: error parsing input file '%s': %s", inputFile, err)
 	}
+	return g.Generate(f)
 
+}
+
+// Generate does the heavy lifting for the code generation starting from the parsed AST file.
+func (g *Generator) Generate(f *ast.File) ([]byte, error) {
+	var err error
 	structs := g.inspect(f)
 	if len(structs) <= 0 {
 		return nil, nil
@@ -163,6 +174,12 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 									temp := strings.Split(rule, `=`)
 									v.Name = temp[0]
 									v.Param = temp[1]
+									if strings.Contains(v.Param, `(`) {
+										// Legacy validation parameter shit
+										v.Param = strings.Replace(v.Param, `)`, `,`, strings.Count(v.Param, `)`)-1)
+										v.Param = strings.Replace(v.Param, `)`, ``, 1)
+										v.Param = strings.Replace(v.Param, `(`, ``, -1)
+									}
 								}
 
 								// Only keep the rule if it is a known template
@@ -208,11 +225,9 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 
 	formatted, err := imports.Process(pkg, vBuff.Bytes(), nil)
 	if err != nil {
-		fmt.Printf("Error formatting code %s\n\n%s\n", err, string(vBuff.Bytes()))
-		err = fmt.Errorf("generate: error formatting code: %s", err)
+		err = fmt.Errorf("generate: error formatting code %s\n\n%s\n", err, string(vBuff.Bytes()))
 	}
 	return formatted, err
-
 }
 
 // addTemplate is for parsing and add that template string into the template engine.

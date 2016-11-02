@@ -7,3 +7,4 @@ import:
   subpackages:
   - /language
 - package: github.com/mkideal/cli
+- package: github.com/Masterminds/sprig

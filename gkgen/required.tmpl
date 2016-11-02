@@ -13,6 +13,11 @@
   {{ GenerationError "Required on numerical values is not supported."}}
   {{ else if eq .FieldType "bool" }}
   {{ GenerationError "Required on boolean values is not supported."}}
+  {{ else if isStruct . }}
+  var zero{{.FieldName}} {{.FieldType}}
+  if s.{{.FieldName}} == zero{{.FieldName}} {
+    {{ AddError . "errors.New(\"is required\")" }}
+  }
   {{ else }}
   var zero{{.FieldName}} {{.FieldType}}
   if s.{{.FieldName}} == zero{{.FieldName}} {

@@ -2,7 +2,7 @@ package gkgen
 
 import (
 	"fmt"
-	"go/scanner"
+	"go/parser"
 	"reflect"
 	"testing"
 
@@ -10,9 +10,7 @@ import (
 )
 
 const (
-	testInput     = `testFile_test.go`
-	testNoStructs = `nostructs_test.go`
-	testExample   = `example.test`
+	testExample = `example.test`
 )
 
 // GkgenTestSuite
@@ -29,25 +27,23 @@ func TestGkgenTestSuite(t *testing.T) {
 	suite.Run(t, new(GkgenTestSuite))
 }
 
-// TestInputFile
-func (s *GkgenTestSuite) TestInputFile() {
-	g := NewGenerator()
-	// Parse the file given in arguments
-	imported, err := g.GenerateFromFile(testInput)
-	if eList, ok := err.(scanner.ErrorList); ok {
-		s.FailNow("Error generating code: " + eList.Error())
-	}
-	s.Nil(err, "Error generating formatted code")
-	fmt.Println(string(imported))
-}
-
 // TestNoStructInputFile
 func (s *GkgenTestSuite) TestNoStructFile() {
+	input := `package test
+	// SomeInterface
+	type SomeInterface interface{
+
+	}
+	`
 	g := NewGenerator()
-	// Parse the file given in arguments
-	imported, err := g.GenerateFromFile(testNoStructs)
+	f, err := parser.ParseFile(g.fileSet, "TestRequiredErrors", input, parser.ParseComments)
+	s.Nil(err, "Error parsing no struct input")
+
+	output, err := g.Generate(f)
 	s.Nil(err, "Error generating formatted code")
-	fmt.Println(string(imported))
+	if false { // Debugging statement
+		fmt.Println(string(output))
+	}
 }
 
 // TestNoFile
@@ -64,7 +60,60 @@ func (s *GkgenTestSuite) TestExampleFile() {
 	// Parse the file given in arguments
 	imported, err := g.GenerateFromFile(testExample)
 	s.Nil(err, "Error generating formatted code")
-	fmt.Println(string(imported))
+	if false {
+		fmt.Println(string(imported))
+	}
+}
+
+func (s *GkgenTestSuite) TestDuplicateRuleFailure() {
+	g := NewGenerator()
+	input := `package test
+	// SomeStruct
+	type SomeStruct struct {
+		TestString      string             ` + "`valid:\"len=0,len=1\"`" + `
+	}
+	`
+	f, err := parser.ParseFile(g.fileSet, "TestStringInput", input, parser.ParseComments)
+	s.Nil(err, "Error parsing input string")
+
+	_, err = g.Generate(f)
+	s.EqualError(err, "Duplicate rules are not allowed: 'len' on field 'TestString'")
+}
+
+// TestBadFormat will cycle through the test cases for successful calls
+// to the required template and validate that the correct validation has been produced.
+func (s *LengthTestSuite) TestBadFormat() {
+
+	format := `package test
+	// SomeInterface
+	type SomeInterface interface{
+
+	}
+	// SomeOtherStruct
+	type SomeOtherStruct struct{
+
+	}
+	// SomeStruct
+	type SomeStruct struct {
+			TestField    %s      %s
+	}`
+
+	inType := "string"
+
+	g := NewGenerator()
+	input := fmt.Sprintf(format, inType, "`valid:\"Length=(12))\"`")
+
+	f, err := parser.ParseFile(g.fileSet, "TestRequiredErrors", input, parser.ParseComments)
+	s.Nil(err, "Error parsing input string for type '%s'", inType)
+
+	output, err := g.Generate(f)
+	s.NotNil(err, "Error generating code for input string")
+	if err != nil {
+		s.Contains(err.Error(), "generate: error formatting code", "Should have gotten a bad format in the output")
+	}
+	if false { // Debug statement helper.
+		fmt.Println(string(output))
+	}
 }
 
 var result bool
