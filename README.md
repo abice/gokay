@@ -27,7 +27,7 @@ go install ./...
 ## Running gokay
 ### Usage
 ```	sh
-gokay <file> [custom-generator-package custom-generator-contructor]
+gokay <file> --template="SomeTemplateToUse.tmpl" --template-dir="some/dir/that/has/templates"
 ```
 
 ### Examples
@@ -38,28 +38,28 @@ gokay file.go
 
 Generate validation methods with a custom package and constructor
 ```sh
-gokay file.go gkcustom NewCustomGKGenerator
+gokay file.go --template=CustomGenerator.tmpl
 ```
 
-gokay relies on the goimports tool to resolve import path of custom generator.
+gokay relies on the goimports tool to format and resolve imports of the generated validation file.
 
 ## Using gokay
 - Add validations to `valid` tag in struct def:
 
 ```go
 type ExampleStruct struct {
-	HexStringPtr            *string `valid:"Length=(16),NotNil,Hex"`
-	HexString               string  `valid:"Length=(12),Hex"`
-	CanBeNilWithConstraints *string `valid:"Length=(12)"`
+	HexStringPtr            *string `valid:"Length=16,NotNil,Hex"`
+	HexString               string  `valid:"Length=12,Hex"`
+	CanBeNilWithConstraints *string `valid:"Length=12"`
 }
 ```
 
 - Run gokay command
 
 ### Tag syntax
-Validation tags are comma separated, with Validation parameters delimited by open and closed parentheses.
+Validation tags are comma separated, with any validation parameter specified after an equal sign.
 
-`valid:"ValidationName1,ValidationName2=(vn2paramA)(vn2paramB)"`
+`valid:"ValidationName1,ValidationName2=vn2param"`
 
 In the above example, the `Hex` and `NotNil` Validations are parameterless, whereas length requires 1 parameter.
 
@@ -84,57 +84,20 @@ If a struct does not have any `valid` tags and no fields with implicit validatio
 ### Writing your own Validations
 gokay was built to allow developers to write and attach their own Validations to the Validate generator.
 
-1. Write a function that validates a field. E.g:
-   
+1. Write a template that creates a validation for a given field making sure to define the template as the validation tag you want to use:
+
     ```go
-    // LengthString checks if the value of a string pointer has a length of exactly 'expected'
-	func LengthString(expected int64, str *string) error {
-		if str == nil {
-			return nil // Covers the case where a value can be nil OR has a length constraint
+		{{define "UUID"}}
+		if err := gokay.IsUUID({{.Param}}, {{if not (IsPtr . )}}&{{end}}s.{{.FieldName}}); err != nil {
+		  {{ AddError . "err" }}
 		}
-	
-		if expected != int64(len(*str)) {
-			return fmt.Errorf("Length was '%d', needs to be '%d'", len(*str), expected)
-		}
-		return nil
-	}
+		{{end -}}
     ```
 
-1. Write a struct that implements the `Generater` interface
-
-    ```go
-	// Generater defines the behavior of types that generate validation code
-    type Generater interface {
-		Generate(reflect.Type, reflect.StructField, []string) (string, error)
-		Name() string
-	}
-	```
-   - Name returns the string that will be used as a validation tag
-
-1. GenerateValidationCode should generate a block will leverage the function defined in step 1.  This block will be inserted into the generated `Validate` function. GenerateValidationCode output example:
-    
-    ```go
-    // ValidationName
-	if err := somepackage.ValidationFunction(someparamA, someparamB, s.Field); err != nil {
-		errorsField = append(errorsField, err)
-	}
-	```
-
-1. Write a function that constructs a `ValidateGenerator`.  This function should live in a different package from your data model. Example:
-
-	```go
-	package gkcustom
-	
-	// To run: `gokay gkexample NewCustomValidator`
-	func NewCustomGKGenerator() *gkgen.ValidateGenerator {
-		v := gkgen.NewValidateGenerator()
-		v.AddValidation(NewCustomValidator())
-		return v
-	}
-	```
+1. Import that template when running gokay
 1. Write tests for your struct's constraints
 1. Add `valid` tags to your struct fields
-1. Run gokay: `gokay file.go gkcustom NewCustomGKGenerator`
+1. Run gokay: `gokay file.go --template=MyTemplate`
 
 [More Examples](internal/gkexample/)
 
@@ -147,7 +110,14 @@ Tested on go 1.7.1.
 ### Build and run unit tests
 
     make test
-    
+
+### TODO
+	- [] Testing for templates
+	- [x] Prevent duplicate validations on the same field
+	- [x] Update Required tag to error out on numerical or boolean fields
+	- [] Support for sub-validations? `Struct fields: generated code will call static Validate method on any field that implements Validateable interface`  Maybe use a deep check
+	- [] Move cli to cmd directory, so that the gokay pkg is at the root of the repo.
+
 ### CI
 
 [This library builds on Circle CI, here.](https://circleci.com/gh/zencoder/gokay/)
@@ -155,4 +125,3 @@ Tested on go 1.7.1.
 ## License
 
 [Apache License Version 2.0](LICENSE)
-

@@ -142,6 +142,11 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 							ruleStr := val[len(validateTag)+1 : len(val)-1]
 							// Split on commas for multiple validations
 							fieldRules := strings.Split(ruleStr, ",")
+
+							// Store the validation as the duplication check so that *if* in the future we want to support certain rules as
+							// having duplicates, we can do that easier.
+							dupecheck := make(map[string]Validation)
+
 							for _, rule := range fieldRules {
 								// Rules are able to have parameters,
 								// but will have an = in them if that is the case.
@@ -162,8 +167,13 @@ func (g *Generator) GenerateFromFile(inputFile string) ([]byte, error) {
 
 								// Only keep the rule if it is a known template
 								if _, ok := g.knownTemplates[v.Name]; ok {
-									f.Rules = append(f.Rules, v)
+									// Make sure it's not a duplicate rule
+									if _, isDupe := dupecheck[v.Name]; isDupe {
+										return nil, fmt.Errorf("Duplicate rules are not allowed: '%s' on field '%s'", v.Name, f.Name)
+									}
+									dupecheck[v.Name] = v
 
+									f.Rules = append(f.Rules, v)
 								} else {
 									fmt.Printf("Skipping unknown validation template: '%s'\n", v.Name)
 								}
