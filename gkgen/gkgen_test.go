@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	testExample = `example.test`
+	testExample = `example_test.go`
 )
 
 // GkgenTestSuite

@@ -94,12 +94,38 @@ func GenerationError(s string) (ret interface{}, err error) {
 }
 
 // isStruct is a helper method for templates to determine if the field is a struct (not a pointer to a struct)
-func isStruct(f Validation) (ret bool, err error) {
+func tmplIsStruct(f Validation) (ret bool, err error) {
+	ret = isStruct(f.F)
+	return
+}
+
+// isStruct is a helper method for templates to determine if the field is a struct (not a pointer to a struct)
+func isStruct(field *ast.Field) (ret bool) {
 	ret = false
-	field := f.F
 	fType := field.Type
 	if _, ok := fType.(*ast.Ident); ok {
 		fType = getIdentType(fType.(*ast.Ident))
+	}
+
+	switch fType.(type) {
+	case *ast.StructType:
+		ret = true
+	}
+	return
+}
+
+// tmplIsStructPtr is the template helper method to determine if a field is a *Struct
+func tmplIsStructPtr(f Validation) (ret bool, err error) {
+	ret = isStructPtr(f.F)
+	return
+}
+
+// isStructPtr is a helper method for templates to determine if the field is a pointer to a struct
+func isStructPtr(field *ast.Field) (ret bool) {
+	ret = false
+	fType := field.Type
+	if star, ok := fType.(*ast.StarExpr); ok {
+		fType = getIdentType(star.X.(*ast.Ident))
 	}
 
 	switch fType.(type) {

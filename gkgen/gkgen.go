@@ -41,18 +41,20 @@ type Field struct {
 
 // Generator is responsible for generating validation files for the given in a go source file.
 type Generator struct {
-	t              *template.Template
-	knownTemplates map[string]*template.Template
-	fileSet        *token.FileSet
+	t                *template.Template
+	knownTemplates   map[string]*template.Template
+	fileSet          *token.FileSet
+	generateImplicit bool
 }
 
 // NewGenerator is a constructor method for creating a new Generator with default
 // templates loaded.
 func NewGenerator() *Generator {
 	g := &Generator{
-		knownTemplates: make(map[string]*template.Template),
-		t:              template.New("gkgen"),
-		fileSet:        token.NewFileSet(),
+		knownTemplates:   make(map[string]*template.Template),
+		t:                template.New("gkgen"),
+		fileSet:          token.NewFileSet(),
+		generateImplicit: true,
 	}
 
 	funcs := sprig.TxtFuncMap()
@@ -65,7 +67,8 @@ func NewGenerator() *Generator {
 	funcs["isMap"] = isMap
 	funcs["isArray"] = isArray
 	funcs["GenerationError"] = GenerationError
-	funcs["isStruct"] = isStruct
+	funcs["isStruct"] = tmplIsStruct
+	funcs["isStructPtr"] = tmplIsStructPtr
 
 	g.t.Funcs(funcs)
 
@@ -75,6 +78,11 @@ func NewGenerator() *Generator {
 
 	g.updateTemplates()
 
+	return g
+}
+
+func (g *Generator) WithNoImplicit() *Generator {
+	g.generateImplicit = false
 	return g
 }
 
@@ -127,21 +135,22 @@ func (g *Generator) Generate(f *ast.File) ([]byte, error) {
 
 		// Go through the fields in the struct and find all the validated tags
 		for _, field := range st.Fields.List {
+			// Make a field holder
+			f := Field{
+				F:    field,
+				Name: field.Names[0].Name,
+			}
+			typeBuff := bytes.NewBuffer([]byte{})
+			pErr := printer.Fprint(typeBuff, g.fileSet, f.F.Type)
+			if pErr != nil {
+				fmt.Printf("Error getting Type: %s\n", pErr)
+			} else {
+				f.Type = typeBuff.String()
+			}
+
 			if field.Tag != nil {
 				if strings.Contains(field.Tag.Value, validateTag) {
 
-					// We have a validation flag, make a field
-					f := Field{
-						F:    field,
-						Name: field.Names[0].Name,
-					}
-					typeBuff := bytes.NewBuffer([]byte{})
-					pErr := printer.Fprint(typeBuff, g.fileSet, f.F.Type)
-					if pErr != nil {
-						fmt.Printf("Error getting Type: %s\n", pErr)
-					} else {
-						f.Type = typeBuff.String()
-					}
 					// The AST keeps the rune marker on the string, so we trim them off
 					str := strings.Trim(field.Tag.Value, "`")
 					// Separate tag types are separated by spaces, so split on that
@@ -203,6 +212,25 @@ func (g *Generator) Generate(f *ast.File) ([]byte, error) {
 						rules[f.Name] = f
 					}
 				}
+			} else {
+				// Field tag is nil, check to see if the field is validateable
+
+				if g.generateImplicit {
+					// fmt.Printf("Checking for struct of non-tagged field '%s'\n", f.Name)
+					if g.isImplicit(f) {
+						v := Validation{
+							Name:      "dive",
+							FieldName: f.Name,
+							F:         f.F,
+							FieldType: f.Type,
+						}
+
+						// fmt.Printf("Adding dive check for '%s'\n", f.Name)
+						// Add the built-in rule for implicit gokay validation
+						f.Rules = append(f.Rules, v)
+						rules[f.Name] = f
+					}
+				}
 			}
 		}
 
@@ -212,14 +240,16 @@ func (g *Generator) Generate(f *ast.File) ([]byte, error) {
 			"rules": rules,
 		}
 
-		err = g.t.ExecuteTemplate(vBuff, "struct", data)
+		if len(rules) > 0 {
+			err = g.t.ExecuteTemplate(vBuff, "struct", data)
 
-		if err != nil {
-			if te, ok := err.(template.ExecError); ok {
-				return nil, fmt.Errorf("generate: error executing template: %s", te.Err)
+			if err != nil {
+				if te, ok := err.(template.ExecError); ok {
+					return nil, fmt.Errorf("generate: error executing template: %s", te.Err)
+				}
+
+				return nil, fmt.Errorf("generate: error executing template: %s", err)
 			}
-
-			return nil, fmt.Errorf("generate: error executing template: %s", err)
 		}
 	}
 
@@ -288,4 +318,13 @@ func (g *Generator) inspect(f *ast.File) map[string]*ast.StructType {
 	})
 
 	return structs
+}
+
+func (g *Generator) isImplicit(f Field) (ret bool) {
+	ret = false
+	if isStruct(f.F) ||
+		isStructPtr(f.F) {
+		ret = true
+	}
+	return
 }

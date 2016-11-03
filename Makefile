@@ -3,15 +3,17 @@ ifdef CIRCLE_ARTIFACTS
   COVERAGEDIR = $(CIRCLE_ARTIFACTS)
 endif
 
-all: build test cover
+all: generate build gen-test test cover
 install-deps:
 	glide install
-build:
+build: generate
 	if [ ! -d bin ]; then mkdir bin; fi
 	go build -v -o bin/gokay
 fmt:
 	@find . -not -path "./vendor/*" -name '*.go' -type f | sed 's#\(.*\)/.*#\1#' | sort -u | xargs -n1 -I {} bash -c "cd {} && goimports -w *.go && gofmt -w -s -l *.go"
-test:
+gen-test:
+	gokay ./internal/gkexample/example.go
+test: generate
 	if [ ! -d coverage ]; then mkdir coverage; fi
 	go test -v ./gkgen -race -cover -coverprofile=$(COVERAGEDIR)/gkgen.coverprofile
 	go test -v ./gokay -race -cover -coverprofile=$(COVERAGEDIR)/gokay.coverprofile

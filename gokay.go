@@ -18,10 +18,12 @@ examples:
 	gokay file.go
 	gokay file.go --template=some.template --template=someOther.template
 	gokay file.go --template-dir=some/dir
+	gokay file.go --no-implicit --template-dir=some/dir
 `
 
 type rootT struct {
 	cli.Helper
+	NoImplicit      bool     `cli:"no-implicit" usage:"turn off implicit validation generation"`
 	CustomTemplates []string `cli:"template" usage:"custom template files"`
 	TemplateDirs    []string `cli:"template-dir" usage:"custom template folders"`
 }
@@ -35,6 +37,9 @@ func main() {
 			return fmt.Errorf(usage)
 		}
 		g := gkgen.NewGenerator()
+		if argv.NoImplicit {
+			g = g.WithNoImplicit()
+		}
 
 		if len(argv.CustomTemplates) > 0 {
 			ctx.String("Adding templates=%s\n", ctx.Color().Grey(argv.CustomTemplates))
